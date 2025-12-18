@@ -5,7 +5,7 @@ import pool from "./db.js";
 import sendOtp from "./mailer.js";   // <-- IMPORTANT
 dotenv.config();
 
-const app = express();
+const app = express(); 
 
 // store OTP temporarily (later you can move this to DB if needed)
 let otpStore = {};
