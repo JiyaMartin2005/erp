@@ -1,10 +1,9 @@
-// routes/authRoutes.js
 import express from "express";
-import { registerUser, loginUser } from "../controllers/authController.js";
+import { register, verifyOtp } from "../controllers/authController.js";
 
 const router = express.Router();
 
-router.post("/register", registerUser);
-router.post("/login", loginUser);
+router.post("/register", register);      // Send OTP
+router.post("/verify-otp", verifyOtp);   // Verify OTP
 
 export default router;

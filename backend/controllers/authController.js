@@ -1,53 +1,59 @@
-// controllers/authController.js
-import pool from "../db.js";
-import bcrypt from "bcrypt";
+import { sendOtpMail } from "../utils/mailer.js";
+import User from "../models/User.js";
 import jwt from "jsonwebtoken";
 
-export const registerUser = async (req, res) => {
+// Temporary OTP store
+const otpStore = {};
+
+// REGISTER → SEND OTP
+export const register = async (req, res) => {
   const { name, email, password } = req.body;
 
   try {
-    // Check existing user
-    const userExists = await pool.query("SELECT * FROM users WHERE email=$1", [email]);
-    if (userExists.rows.length > 0) {
-      return res.status(400).json({ message: "Email already exists" });
+    const existingUser = await User.findOne({ where: { email } });
+    if (existingUser) {
+      return res.status(400).json({ error: "User already exists" });
     }
 
-    // Hash password
-    const hash = await bcrypt.hash(password, 10);
+    const otp = Math.floor(100000 + Math.random() * 900000);
+    otpStore[email] = { otp, name, password };
 
-    // Insert user
-    const newUser = await pool.query(
-      "INSERT INTO users (name, email, password) VALUES ($1,$2,$3) RETURNING *",
-      [name, email, hash]
-    );
+    await sendOtpMail(email, otp);
 
-    res.json({ message: "User registered", user: newUser.rows[0] });
+    res.status(200).json({ message: "OTP sent to your email" });
   } catch (err) {
-    console.log(err);
-    res.status(500).json({ error: "Server error" });
+    res.status(500).json({ error: "Failed to send OTP" });
   }
 };
 
-export const loginUser = async (req, res) => {
-  const { email, password } = req.body;
+// VERIFY OTP → CREATE USER & RETURN JWT
+export const verifyOtp = async (req, res) => {
+  const { email, otp } = req.body;
 
   try {
-    const user = await pool.query("SELECT * FROM users WHERE email=$1", [email]);
+    const record = otpStore[email];
+    if (!record) return res.status(400).json({ error: "OTP expired or not found" });
+    if (record.otp !== Number(otp)) return res.status(400).json({ error: "Invalid OTP" });
 
-    if (user.rows.length === 0) {
-      return res.status(400).json({ message: "User not found" });
-    }
-
-    const valid = await bcrypt.compare(password, user.rows[0].password);
-    if (!valid) return res.status(400).json({ message: "Invalid password" });
-
-    const token = jwt.sign({ id: user.rows[0].id }, process.env.JWT_SECRET, {
-      expiresIn: "1d",
+    // Create user in PostgreSQL
+    const user = await User.create({
+      name: record.name,
+      email,
+      password: record.password
     });
 
-    res.json({ message: "Login successful", token, user: user.rows[0] });
+    // Remove OTP from memory
+    delete otpStore[email];
+
+    // Generate JWT token
+    const token = jwt.sign(
+      { id: user.id, email: user.email, role: user.role },
+      process.env.JWT_SECRET,
+      { expiresIn: "1d" }
+    );
+
+    res.status(201).json({ message: "User registered successfully", token });
   } catch (err) {
-    res.status(500).json({ error: "Server error" });
+    res.status(500).json({ error: "OTP verification failed" });
   }
 };

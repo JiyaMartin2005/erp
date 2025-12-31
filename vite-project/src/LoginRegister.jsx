@@ -46,9 +46,10 @@ export default function LoginRegister() {
   const handleLogin = async (e) => {
     e.preventDefault();
     try {
-      const res = await axios.post("http://localhost:5000/login", {
-        email: loginEmail,
-        password: loginPassword,
+      const res = await axios.post("http://localhost:5000/auth/login", {
+         name: registerName,
+         email: registerEmail,
+         password: registerPassword,
       });
       console.log(res.data);
       alert(res.data.message);
@@ -61,7 +62,7 @@ export default function LoginRegister() {
   const handleRegister = async (e) => {
     e.preventDefault();
     try {
-      const res = await axios.post("http://localhost:5000/register", {
+      const res = await axios.post("http://localhost:5000/auth/register", {
         name: registerName,
         email: registerEmail,
         password: registerPassword,
@@ -77,7 +78,7 @@ export default function LoginRegister() {
 
   const handleResendOtp = async () => {
     try {
-      const res = await axios.post("http://localhost:5000/resend-otp", {
+      const res = await axios.post("http://localhost:5000/auth/resend-otp", {
         email: registerEmail,
       });
       console.log(res.data);
@@ -93,7 +94,7 @@ export default function LoginRegister() {
   const handleVerifyOtp = async (e) => {
     e.preventDefault();
     try {
-      const res = await axios.post("http://localhost:5000/verify-otp", {
+      const res = await axios.post("http://localhost:5000/auth/verify-otp", {
         email: registerEmail,
         otp: otp,
       });
